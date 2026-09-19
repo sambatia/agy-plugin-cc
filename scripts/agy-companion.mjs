@@ -26,13 +26,49 @@ function writeLastSession(data) {
   fs.writeFileSync(SESSION_FILE, JSON.stringify(data, null, 2));
 }
 
+const HOMEBREW_PREFIXES = ["/opt/homebrew/bin", "/usr/local/bin"];
+
+// Resolve agy from PATH first, then from the places package managers link it.
+// Hook and IDE processes often run with a trimmed PATH; treating that as
+// "not installed" sent agents to the vendor installer on machines where the
+// CLI was already present.
+function findExecutable(name) {
+  const dirs = [
+    ...(process.env.PATH || "").split(path.delimiter),
+    ...HOMEBREW_PREFIXES,
+    path.join(os.homedir(), ".local", "bin")
+  ];
+  for (const dir of dirs) {
+    if (!dir) continue;
+    const candidate = path.join(dir, name);
+    try {
+      fs.accessSync(candidate, fs.constants.X_OK);
+      if (fs.statSync(candidate).isFile()) return candidate;
+    } catch {
+      // not here
+    }
+  }
+  return null;
+}
+
 function getAgyPath() {
-  const result = spawnSync("which", ["agy"], { encoding: "utf8" });
-  return result.stdout.trim() || null;
+  return findExecutable("agy");
+}
+
+// Prefer the package manager that already owns the machine's CLIs. On macOS
+// with Homebrew the antigravity-cli cask links /opt/homebrew/bin/agy; the
+// vendor script overwrites that symlink with a plain binary and breaks every
+// later `brew upgrade`.
+function installHint() {
+  if (process.platform === "darwin" &&
+      HOMEBREW_PREFIXES.some((dir) => fs.existsSync(path.join(dir, "brew")))) {
+    return "brew install --cask antigravity-cli";
+  }
+  return "curl -fsSL https://antigravity.google/cli/install.sh | bash";
 }
 
 function getAgyVersion() {
-  const result = spawnSync("agy", ["--version"], { encoding: "utf8" });
+  const result = spawnSync(getAgyPath() ?? "agy", ["--version"], { encoding: "utf8" });
   return result.stdout.trim() || result.stderr.trim() || null;
 }
 
@@ -82,7 +118,7 @@ function buildAgyArgs(prompt, opts) {
 async function runAgyForeground(prompt, opts) {
   const agyPath = getAgyPath();
   if (!agyPath) {
-    process.stderr.write("agy is not installed. Run: curl -fsSL https://antigravity.google/cli/install.sh | bash\n");
+    process.stderr.write(`agy is not installed. Install it with: ${installHint()}\n`);
     process.exitCode = 1;
     return;
   }
@@ -131,7 +167,7 @@ async function runAgyForeground(prompt, opts) {
 function runAgyBackground(prompt, opts) {
   const agyPath = getAgyPath();
   if (!agyPath) {
-    process.stderr.write("agy is not installed. Run: curl -fsSL https://antigravity.google/cli/install.sh | bash\n");
+    process.stderr.write(`agy is not installed. Install it with: ${installHint()}\n`);
     process.exitCode = 1;
     return;
   }
@@ -171,13 +207,13 @@ function handleSetup() {
   const report = {
     ready,
     agy: { available: ready, path: agyPath, version },
-    nextSteps: ready ? [] : ["Install agy with: curl -fsSL https://antigravity.google/cli/install.sh | bash"]
+    nextSteps: ready ? [] : [`Install agy with: ${installHint()}`]
   };
 
   if (ready) {
     process.stdout.write(`agy is ready.\n  Path: ${agyPath}\n  Version: ${version ?? "unknown"}\n`);
   } else {
-    process.stdout.write(`agy is NOT installed.\n  Install with: curl -fsSL https://antigravity.google/cli/install.sh | bash\n`);
+    process.stdout.write(`agy is NOT installed.\n  Install with: ${installHint()}\n`);
     process.exitCode = 1;
   }
 

@@ -11,6 +11,14 @@ The Antigravity CLI must be installed and authenticated before using this plugin
 1. **Install agy CLI:**
 
    **Mac/Linux:**
+   On macOS with Homebrew, prefer the cask so `agy` stays under `brew upgrade`:
+
+   ```bash
+   brew install --cask antigravity-cli
+   ```
+
+   Otherwise use the vendor installer:
+
    ```bash
    curl -fsSL https://antigravity.google/cli/install.sh | bash
    ```
