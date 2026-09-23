@@ -31,15 +31,11 @@ export function resolveAgyBinary() {
   return null;
 }
 
-// Prefer the package manager that already owns the machine's CLIs. On macOS
-// with Homebrew the antigravity-cli cask links /opt/homebrew/bin/agy; the
-// vendor script overwrites that symlink with a plain binary and breaks every
-// later `brew upgrade`.
+// agy updates itself in the background (no setting disables it) and the
+// vendor installer puts it in ~/.local/bin, where that updater owns it. A
+// Homebrew cask fights the updater: each self-update replaces the cask's
+// symlink with a plain binary and the next `brew upgrade` fails to link.
 export function installHint() {
-  if (process.platform === "darwin" &&
-      HOMEBREW_PREFIXES.some((dir) => fs.existsSync(path.join(dir, "brew")))) {
-    return "brew install --cask antigravity-cli";
-  }
   return "curl -fsSL https://antigravity.google/cli/install.sh | bash";
 }
 

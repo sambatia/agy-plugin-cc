@@ -11,13 +11,11 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/agy-companion.mjs" setup --json $ARGUMENTS
 ```
 
 If the result says agy is unavailable:
-- Tell the user to install agy with the command listed under next steps. On macOS with Homebrew that is `brew install --cask antigravity-cli`; elsewhere it is the vendor installer:
+- Tell the user to install agy with:
 
 ```
 curl -fsSL https://antigravity.google/cli/install.sh | bash
 ```
-
-- Do not run either installer yourself, and never run the vendor installer where Homebrew already manages `agy`: it replaces the cask's symlink with a plain binary and breaks `brew upgrade`.
 
 If agy is already installed:
 - Present the final setup output to the user.
